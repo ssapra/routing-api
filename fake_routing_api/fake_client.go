@@ -66,17 +66,16 @@ type FakeClient struct {
 		result1 []models.TcpRouteMapping
 		result2 error
 	}
-	ReservePortStub        func(string, string) (int, error)
-	reservePortMutex       sync.RWMutex
-	reservePortArgsForCall []struct {
+	FindAvailablePortfromRangeStub        func(string) (int, error)
+	findAvailablePortfromRangeMutex       sync.RWMutex
+	findAvailablePortfromRangeArgsForCall []struct {
 		arg1 string
-		arg2 string
 	}
-	reservePortReturns struct {
+	findAvailablePortfromRangeReturns struct {
 		result1 int
 		result2 error
 	}
-	reservePortReturnsOnCall map[int]struct {
+	findAvailablePortfromRangeReturnsOnCall map[int]struct {
 		result1 int
 		result2 error
 	}
@@ -193,6 +192,18 @@ type FakeClient struct {
 		result1 error
 	}
 	updateRouterGroupReturnsOnCall map[int]struct {
+		result1 error
+	}
+	UpsertRouterGroupWithPortStub        func(models.RouterGroup, int) error
+	upsertRouterGroupWithPortMutex       sync.RWMutex
+	upsertRouterGroupWithPortArgsForCall []struct {
+		arg1 models.RouterGroup
+		arg2 int
+	}
+	upsertRouterGroupWithPortReturns struct {
+		result1 error
+	}
+	upsertRouterGroupWithPortReturnsOnCall map[int]struct {
 		result1 error
 	}
 	UpsertRoutesStub        func([]models.Route) error
@@ -539,65 +550,64 @@ func (fake *FakeClient) FilteredTcpRouteMappingsReturnsOnCall(i int, result1 []m
 	}{result1, result2}
 }
 
-func (fake *FakeClient) ReservePort(arg1 string, arg2 string) (int, error) {
-	fake.reservePortMutex.Lock()
-	ret, specificReturn := fake.reservePortReturnsOnCall[len(fake.reservePortArgsForCall)]
-	fake.reservePortArgsForCall = append(fake.reservePortArgsForCall, struct {
+func (fake *FakeClient) FindAvailablePortfromRange(arg1 string) (int, error) {
+	fake.findAvailablePortfromRangeMutex.Lock()
+	ret, specificReturn := fake.findAvailablePortfromRangeReturnsOnCall[len(fake.findAvailablePortfromRangeArgsForCall)]
+	fake.findAvailablePortfromRangeArgsForCall = append(fake.findAvailablePortfromRangeArgsForCall, struct {
 		arg1 string
-		arg2 string
-	}{arg1, arg2})
-	fake.recordInvocation("ReservePort", []interface{}{arg1, arg2})
-	fake.reservePortMutex.Unlock()
-	if fake.ReservePortStub != nil {
-		return fake.ReservePortStub(arg1, arg2)
+	}{arg1})
+	fake.recordInvocation("FindAvailablePortfromRange", []interface{}{arg1})
+	fake.findAvailablePortfromRangeMutex.Unlock()
+	if fake.FindAvailablePortfromRangeStub != nil {
+		return fake.FindAvailablePortfromRangeStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.reservePortReturns
+	fakeReturns := fake.findAvailablePortfromRangeReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeClient) ReservePortCallCount() int {
-	fake.reservePortMutex.RLock()
-	defer fake.reservePortMutex.RUnlock()
-	return len(fake.reservePortArgsForCall)
+func (fake *FakeClient) FindAvailablePortfromRangeCallCount() int {
+	fake.findAvailablePortfromRangeMutex.RLock()
+	defer fake.findAvailablePortfromRangeMutex.RUnlock()
+	return len(fake.findAvailablePortfromRangeArgsForCall)
 }
 
-func (fake *FakeClient) ReservePortCalls(stub func(string, string) (int, error)) {
-	fake.reservePortMutex.Lock()
-	defer fake.reservePortMutex.Unlock()
-	fake.ReservePortStub = stub
+func (fake *FakeClient) FindAvailablePortfromRangeCalls(stub func(string) (int, error)) {
+	fake.findAvailablePortfromRangeMutex.Lock()
+	defer fake.findAvailablePortfromRangeMutex.Unlock()
+	fake.FindAvailablePortfromRangeStub = stub
 }
 
-func (fake *FakeClient) ReservePortArgsForCall(i int) (string, string) {
-	fake.reservePortMutex.RLock()
-	defer fake.reservePortMutex.RUnlock()
-	argsForCall := fake.reservePortArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+func (fake *FakeClient) FindAvailablePortfromRangeArgsForCall(i int) string {
+	fake.findAvailablePortfromRangeMutex.RLock()
+	defer fake.findAvailablePortfromRangeMutex.RUnlock()
+	argsForCall := fake.findAvailablePortfromRangeArgsForCall[i]
+	return argsForCall.arg1
 }
 
-func (fake *FakeClient) ReservePortReturns(result1 int, result2 error) {
-	fake.reservePortMutex.Lock()
-	defer fake.reservePortMutex.Unlock()
-	fake.ReservePortStub = nil
-	fake.reservePortReturns = struct {
+func (fake *FakeClient) FindAvailablePortfromRangeReturns(result1 int, result2 error) {
+	fake.findAvailablePortfromRangeMutex.Lock()
+	defer fake.findAvailablePortfromRangeMutex.Unlock()
+	fake.FindAvailablePortfromRangeStub = nil
+	fake.findAvailablePortfromRangeReturns = struct {
 		result1 int
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeClient) ReservePortReturnsOnCall(i int, result1 int, result2 error) {
-	fake.reservePortMutex.Lock()
-	defer fake.reservePortMutex.Unlock()
-	fake.ReservePortStub = nil
-	if fake.reservePortReturnsOnCall == nil {
-		fake.reservePortReturnsOnCall = make(map[int]struct {
+func (fake *FakeClient) FindAvailablePortfromRangeReturnsOnCall(i int, result1 int, result2 error) {
+	fake.findAvailablePortfromRangeMutex.Lock()
+	defer fake.findAvailablePortfromRangeMutex.Unlock()
+	fake.FindAvailablePortfromRangeStub = nil
+	if fake.findAvailablePortfromRangeReturnsOnCall == nil {
+		fake.findAvailablePortfromRangeReturnsOnCall = make(map[int]struct {
 			result1 int
 			result2 error
 		})
 	}
-	fake.reservePortReturnsOnCall[i] = struct {
+	fake.findAvailablePortfromRangeReturnsOnCall[i] = struct {
 		result1 int
 		result2 error
 	}{result1, result2}
@@ -1158,6 +1168,67 @@ func (fake *FakeClient) UpdateRouterGroupReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeClient) UpsertRouterGroupWithPort(arg1 models.RouterGroup, arg2 int) error {
+	fake.upsertRouterGroupWithPortMutex.Lock()
+	ret, specificReturn := fake.upsertRouterGroupWithPortReturnsOnCall[len(fake.upsertRouterGroupWithPortArgsForCall)]
+	fake.upsertRouterGroupWithPortArgsForCall = append(fake.upsertRouterGroupWithPortArgsForCall, struct {
+		arg1 models.RouterGroup
+		arg2 int
+	}{arg1, arg2})
+	fake.recordInvocation("UpsertRouterGroupWithPort", []interface{}{arg1, arg2})
+	fake.upsertRouterGroupWithPortMutex.Unlock()
+	if fake.UpsertRouterGroupWithPortStub != nil {
+		return fake.UpsertRouterGroupWithPortStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.upsertRouterGroupWithPortReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeClient) UpsertRouterGroupWithPortCallCount() int {
+	fake.upsertRouterGroupWithPortMutex.RLock()
+	defer fake.upsertRouterGroupWithPortMutex.RUnlock()
+	return len(fake.upsertRouterGroupWithPortArgsForCall)
+}
+
+func (fake *FakeClient) UpsertRouterGroupWithPortCalls(stub func(models.RouterGroup, int) error) {
+	fake.upsertRouterGroupWithPortMutex.Lock()
+	defer fake.upsertRouterGroupWithPortMutex.Unlock()
+	fake.UpsertRouterGroupWithPortStub = stub
+}
+
+func (fake *FakeClient) UpsertRouterGroupWithPortArgsForCall(i int) (models.RouterGroup, int) {
+	fake.upsertRouterGroupWithPortMutex.RLock()
+	defer fake.upsertRouterGroupWithPortMutex.RUnlock()
+	argsForCall := fake.upsertRouterGroupWithPortArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeClient) UpsertRouterGroupWithPortReturns(result1 error) {
+	fake.upsertRouterGroupWithPortMutex.Lock()
+	defer fake.upsertRouterGroupWithPortMutex.Unlock()
+	fake.UpsertRouterGroupWithPortStub = nil
+	fake.upsertRouterGroupWithPortReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeClient) UpsertRouterGroupWithPortReturnsOnCall(i int, result1 error) {
+	fake.upsertRouterGroupWithPortMutex.Lock()
+	defer fake.upsertRouterGroupWithPortMutex.Unlock()
+	fake.UpsertRouterGroupWithPortStub = nil
+	if fake.upsertRouterGroupWithPortReturnsOnCall == nil {
+		fake.upsertRouterGroupWithPortReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.upsertRouterGroupWithPortReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeClient) UpsertRoutes(arg1 []models.Route) error {
 	var arg1Copy []models.Route
 	if arg1 != nil {
@@ -1301,8 +1372,8 @@ func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	defer fake.deleteTcpRouteMappingsMutex.RUnlock()
 	fake.filteredTcpRouteMappingsMutex.RLock()
 	defer fake.filteredTcpRouteMappingsMutex.RUnlock()
-	fake.reservePortMutex.RLock()
-	defer fake.reservePortMutex.RUnlock()
+	fake.findAvailablePortfromRangeMutex.RLock()
+	defer fake.findAvailablePortfromRangeMutex.RUnlock()
 	fake.routerGroupWithNameMutex.RLock()
 	defer fake.routerGroupWithNameMutex.RUnlock()
 	fake.routerGroupsMutex.RLock()
@@ -1323,6 +1394,8 @@ func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	defer fake.tcpRouteMappingsMutex.RUnlock()
 	fake.updateRouterGroupMutex.RLock()
 	defer fake.updateRouterGroupMutex.RUnlock()
+	fake.upsertRouterGroupWithPortMutex.RLock()
+	defer fake.upsertRouterGroupWithPortMutex.RUnlock()
 	fake.upsertRoutesMutex.RLock()
 	defer fake.upsertRoutesMutex.RUnlock()
 	fake.upsertTcpRouteMappingsMutex.RLock()

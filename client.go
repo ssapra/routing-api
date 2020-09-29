@@ -36,7 +36,8 @@ type Client interface {
 	UpdateRouterGroup(models.RouterGroup) error
 	CreateRouterGroup(models.RouterGroup) error
 	DeleteRouterGroup(models.RouterGroup) error
-	ReservePort(string, string) (int, error)
+	FindAvailablePortfromRange(string) (int, error)
+	UpsertRouterGroupWithPort(models.RouterGroup, int) error
 	UpsertTcpRouteMappings([]models.TcpRouteMapping) error
 	DeleteTcpRouteMappings([]models.TcpRouteMapping) error
 	TcpRouteMappings() ([]models.TcpRouteMapping, error)
@@ -128,7 +129,7 @@ func (c *client) RouterGroupWithName(name string) (models.RouterGroup, error) {
 	return routerGroups[0], err
 }
 
-func (c *client) ReservePort(groupName string, portRange string) (int, error) {
+func(c *client) FindAvailablePortfromRange(portRange string) (int, error) {
 	reservablePorts := models.ReservablePorts(portRange)
 	ranges, err := reservablePorts.Parse()
 	if err != nil {
@@ -153,31 +154,42 @@ func (c *client) ReservePort(groupName string, portRange string) (int, error) {
 		return 0, err
 	}
 
-	routerGroup := models.RouterGroup{
-		Name:            groupName,
-		Type:            models.RouterGroup_TCP,
-		ReservablePorts: reservablePort,
-	}
-
-	existingRouterGroup, _ := c.RouterGroupWithName(groupName)
-
-	if (existingRouterGroup != models.RouterGroup{}) {
-		existingRouterGroup.ReservablePorts = reservablePort
-		err = c.UpdateRouterGroup(existingRouterGroup)
-
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		err = c.CreateRouterGroup(routerGroup)
-
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	return strconv.Atoi(string(reservablePort))
 }
+
+func (c *client) UpsertRouterGroup(group models.RouterGroup) error {
+	c.RouterGroupWithName(group.Name)
+	c.CreateRouterGroup(group)
+
+	return nil
+}
+
+//func (c *client) ReservePort(groupName string, portRange string) (int, error) {
+//	routerGroup := models.RouterGroup{
+//		Name:            groupName,
+//		Type:            models.RouterGroup_TCP,
+//		ReservablePorts: reservablePort,
+//	}
+//
+//	existingRouterGroup, _ := c.RouterGroupWithName(groupName)
+//
+//	if (existingRouterGroup != models.RouterGroup{}) {
+//		existingRouterGroup.ReservablePorts = reservablePort
+//		err = c.UpdateRouterGroup(existingRouterGroup)
+//
+//		if err != nil {
+//			return 0, err
+//		}
+//	} else {
+//		err = c.CreateRouterGroup(routerGroup)
+//
+//		if err != nil {
+//			return 0, err
+//		}
+//	}
+//
+//	return strconv.Atoi(string(reservablePort))
+//}
 
 func getNextAvailablePort(groups models.RouterGroups, portRange models.Range) (models.ReservablePorts, error) {
 	portSet := make(map[uint64]bool)
@@ -185,7 +197,7 @@ func getNextAvailablePort(groups models.RouterGroups, portRange models.Range) (m
 	for _, group := range groups {
 		groupPortRanges, err := group.ReservablePorts.Parse()
 		if err != nil {
-			return "", err // not tested
+			return "", err
 		}
 
 		for _, grp := range groupPortRanges {

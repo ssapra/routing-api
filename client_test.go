@@ -1218,22 +1218,17 @@ var _ = Describe("Client", func() {
 	})
 
 	Context("ReservePort", func() {
-		When("no router groups already exist", func() {
+		FWhen("no router groups already exist", func() {
+			var routerGroup models.RouterGroup
 			BeforeEach(func() {
-				routerGroup := models.RouterGroup{
+				routerGroup = models.RouterGroup{
 					Name:            "new-router-group",
 					Type:            "tcp",
-					ReservablePorts: "2000",
 				}
 
-				listData, _ := json.Marshal([]models.RouterGroup{})
 				postData, _ := json.Marshal(routerGroup)
 
 				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusOK, listData),
-					),
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
 						ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
@@ -1247,58 +1242,22 @@ var _ = Describe("Client", func() {
 			})
 
 			It("creates a new router group within the port range", func() {
-				port, err := client.ReservePort("new-router-group", "2000-3000")
+				err := client.UpsertRouterGroupWithPort(routerGroup, 2000)
 				Expect(err).ToNot(HaveOccurred())
-
-				Expect(port).To(Equal(2000))
+				requests := server.ReceivedRequests()
+				Expect(len(requests)).To(Equal(2))
+				Expect(requests[0].Method).To(Equal("GET"))
+				Expect(requests[0].URL.Path).To(Equal(ROUTER_GROUPS_API_URL))
+				Expect(requests[1].Method).To(Equal("POST"))
+				Expect(requests[1].URL.Path).To(Equal(ROUTER_GROUPS_API_URL))
 			})
 		})
 
-		When("another router group already exists", func() {
+		When("the router group already exists with a different port", func() {
+			var existingRouterGroup models.RouterGroup
+
 			BeforeEach(func() {
-				existingRouterGroup := models.RouterGroup{
-					Name:            "existing-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2000",
-				}
-
-				newRouterGroup := models.RouterGroup{
-					Name:            "new-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2001",
-				}
-
-				listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
-				postData, _ := json.Marshal(newRouterGroup)
-
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusOK, listData),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
-						ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyBody(postData),
-						ghttp.VerifyRequest("POST", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusCreated, postData),
-					),
-				)
-			})
-
-			It("creates a new router group with the next available port in the range", func() {
-				port, err := client.ReservePort("new-router-group", "2000-3000")
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(port).To(Equal(2001))
-			})
-		})
-
-		When("the router group already exists with a port outside of the requested port range", func() {
-			BeforeEach(func() {
-				existingRouterGroup := models.RouterGroup{
+				existingRouterGroup = models.RouterGroup{
 					Name:            "existing-router-group",
 					Type:            "tcp",
 					ReservablePorts: "2002",
@@ -1334,55 +1293,148 @@ var _ = Describe("Client", func() {
 			})
 
 			It("updates the new router group with the next available port in the range", func() {
-				port, err := client.ReservePort("existing-router-group", "3000-4000")
+				err := client.UpsertRouterGroupWithPort(existingRouterGroup, 3000)
 				Expect(err).ToNot(HaveOccurred())
+			})
+		//
+		//})
+		//
+		//When("updating the existing router group fails", func() {
+		//	BeforeEach(func() {
+		//		existingRouterGroup := models.RouterGroup{
+		//			Name:            "existing-router-group",
+		//			Type:            "tcp",
+		//			ReservablePorts: "2002",
+		//			Guid:            "some-guid",
+		//		}
+		//
+		//		newRouterGroup := models.RouterGroup{
+		//			Name:            "existing-router-group",
+		//			Type:            "tcp",
+		//			ReservablePorts: "3000",
+		//			Guid:            "some-guid",
+		//		}
+		//
+		//		listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
+		//		putData, _ := json.Marshal(newRouterGroup)
+		//
+		//		server.AppendHandlers(
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
+		//				ghttp.RespondWith(http.StatusOK, listData),
+		//			),
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=existing-router-group"),
+		//				ghttp.RespondWith(http.StatusOK, listData),
+		//			),
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyBody(putData),
+		//				ghttp.VerifyRequest("PUT", fmt.Sprintf("%s/%s", ROUTER_GROUPS_API_URL, existingRouterGroup.Guid)),
+		//
+		//				ghttp.RespondWith(http.StatusInternalServerError, []byte(`error: failed to update router group`)),
+		//			),
+		//		)
+		//	})
+		//
+		//	It("returns an error", func() {
+		//		_, err := client.ReservePort("existing-router-group", "3000-4000")
+		//		Expect(err).To(HaveOccurred())
+		//		Expect(err.Error()).To(ContainSubstring("failed to update router group"))
+		//	})
+		//})
+		//
+		//When("creating the router group fails", func() {
+		//	BeforeEach(func() {
+		//		newRouterGroup := models.RouterGroup{
+		//			Name:            "new-router-group",
+		//			Type:            "tcp",
+		//			ReservablePorts: "2000",
+		//		}
+		//
+		//		listData, _ := json.Marshal([]models.RouterGroup{})
+		//		postData, _ := json.Marshal(newRouterGroup)
+		//
+		//		server.AppendHandlers(
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
+		//				ghttp.RespondWith(http.StatusOK, listData),
+		//			),
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
+		//				ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
+		//			),
+		//			ghttp.CombineHandlers(
+		//				ghttp.VerifyBody(postData),
+		//				ghttp.VerifyRequest("POST", ROUTER_GROUPS_API_URL),
+		//				ghttp.RespondWith(http.StatusInternalServerError, nil),
+		//			),
+		//		)
+		//	})
+		//
+		//	It("returns an error", func() {
+		//		_, err := client.ReservePort("new-router-group", "2000")
+		//		Expect(err).To(HaveOccurred())
+		//	})
+		//})
+	})
 
-				Expect(port).To(Equal(3000))
+	Context("FindAvailablePortfromRange", func() {
+		When("the port range is an invalid range", func() {
+			It("returns an error", func() {
+				_, err := client.FindAvailablePortfromRange("2000-3000-4000")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		When("multiple port ranges are requested", func(){
+			It("returns an error", func() {
+				_, err := client.FindAvailablePortfromRange("2000-3000,4000-5000")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("multiple port ranges are not supported"))
+
+			})
+		})
+
+		When("a single port is requested", func() {
+			It("returns an error", func() {
+				_, err := client.FindAvailablePortfromRange("2000")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("single port is not supported"))
 			})
 
 		})
 
-		When("updating the existing router group fails", func() {
+		When("no router groups already exist", func() {
 			BeforeEach(func() {
-				existingRouterGroup := models.RouterGroup{
-					Name:            "existing-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2002",
-					Guid:            "some-guid",
-				}
-
-				newRouterGroup := models.RouterGroup{
-					Name:            "existing-router-group",
-					Type:            "tcp",
-					ReservablePorts: "3000",
-					Guid:            "some-guid",
-				}
-
-				listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
-				putData, _ := json.Marshal(newRouterGroup)
-
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusOK, listData),
+						ghttp.RespondWith(http.StatusOK, `[]`),
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=existing-router-group"),
-						ghttp.RespondWith(http.StatusOK, listData),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyBody(putData),
-						ghttp.VerifyRequest("PUT", fmt.Sprintf("%s/%s", ROUTER_GROUPS_API_URL, existingRouterGroup.Guid)),
+				)
+			})
 
-						ghttp.RespondWith(http.StatusInternalServerError, []byte(`error: failed to update router group`)),
+			It("picks the first available port in the range", func() {
+				port, err := client.FindAvailablePortfromRange("2000-3000")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(port).To(Equal(2000))
+			})
+		})
+
+		When("fetching router groups fails", func() {
+			BeforeEach(func() {
+				server.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
+						ghttp.RespondWith(http.StatusInternalServerError, nil),
 					),
 				)
 			})
 
 			It("returns an error", func() {
-				_, err := client.ReservePort("existing-router-group", "3000-4000")
+				_, err := client.FindAvailablePortfromRange("2000-3000")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to update router group"))
 			})
 		})
 
@@ -1394,37 +1446,45 @@ var _ = Describe("Client", func() {
 					ReservablePorts: "2000-2010",
 				}
 
-				newRouterGroup := models.RouterGroup{
-					Name:            "new-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2011",
-				}
-
 				listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
-				postData, _ := json.Marshal(newRouterGroup)
 
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
 						ghttp.RespondWith(http.StatusOK, listData),
 					),
+				)
+			})
+
+			It("finds the next available port in the range", func() {
+				port, err := client.FindAvailablePortfromRange("2000-3000")
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(port).To(Equal(2011))
+			})
+		})
+
+		When("an existing router group has invalid port range", func() {
+			BeforeEach(func() {
+				existingRouterGroup := models.RouterGroup{
+					Name:            "existing-router-group",
+					Type:            "tcp",
+					ReservablePorts: "2000-2010-2020",
+				}
+
+				listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
+
+				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
-						ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyBody(postData),
-						ghttp.VerifyRequest("POST", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusCreated, postData),
+						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
+						ghttp.RespondWith(http.StatusOK, listData),
 					),
 				)
 			})
 
-			It("creates a new router group with the next available port in the range", func() {
-				port, err := client.ReservePort("new-router-group", "2000-3000")
-				Expect(err).ToNot(HaveOccurred())
-
-				Expect(port).To(Equal(2011))
+			It("returns an error", func() {
+				_, err := client.FindAvailablePortfromRange("2000-3000")
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
@@ -1436,34 +1496,18 @@ var _ = Describe("Client", func() {
 					ReservablePorts: "2000-2010,2010-2011,2050-2051",
 				}
 
-				newRouterGroup := models.RouterGroup{
-					Name:            "new-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2012",
-				}
-
 				listData, _ := json.Marshal([]models.RouterGroup{existingRouterGroup})
-				postData, _ := json.Marshal(newRouterGroup)
 
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
 						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
 						ghttp.RespondWith(http.StatusOK, listData),
 					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
-						ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyBody(postData),
-						ghttp.VerifyRequest("POST", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusCreated, postData),
-					),
 				)
 			})
 
 			It("creates a new router group with the next available port in the range", func() {
-				port, err := client.ReservePort("new-router-group", "2000-3000")
+				port, err := client.FindAvailablePortfromRange("2000-3000")
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(port).To(Equal(2012))
@@ -1489,85 +1533,10 @@ var _ = Describe("Client", func() {
 			})
 
 			It("returns a port range exhausted error", func() {
-				_, err := client.ReservePort("new-router-group", "2000-3000")
+				_, err := client.FindAvailablePortfromRange("2000-3000")
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(`port range is exhausted`))
 			})
-		})
-
-		When("fetching router groups fails", func() {
-			BeforeEach(func() {
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusInternalServerError, nil),
-					),
-				)
-			})
-
-			It("returns an error", func() {
-				_, err := client.ReservePort("my-router-group", "2000")
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		When("creating the router group fails", func() {
-			BeforeEach(func() {
-				newRouterGroup := models.RouterGroup{
-					Name:            "new-router-group",
-					Type:            "tcp",
-					ReservablePorts: "2000",
-				}
-
-				listData, _ := json.Marshal([]models.RouterGroup{})
-				postData, _ := json.Marshal(newRouterGroup)
-
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusOK, listData),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("GET", ROUTER_GROUPS_API_URL, "name=new-router-group"),
-						ghttp.RespondWith(http.StatusNotFound, []byte(`error: router group not found`)),
-					),
-					ghttp.CombineHandlers(
-						ghttp.VerifyBody(postData),
-						ghttp.VerifyRequest("POST", ROUTER_GROUPS_API_URL),
-						ghttp.RespondWith(http.StatusInternalServerError, nil),
-					),
-				)
-			})
-
-			It("returns an error", func() {
-				_, err := client.ReservePort("new-router-group", "2000")
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		When("the port range is an invalid range", func() {
-			It("returns an error", func() {
-				_, err := client.ReservePort("new-router-group", "2000-3000-4000")
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		When("multiple port ranges are requested", func(){
-			It("returns an error", func() {
-				_, err := client.ReservePort("new-router-group", "2000-3000,4000-5000")
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError("multiple port ranges are not supported"))
-
-			})
-		})
-
-		When("a single port is requested", func() {
-			It("returns an error", func() {
-				_, err := client.ReservePort("new-router-group", "2000")
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError("single port is not supported"))
-			})
-
 		})
 	})
 })
